@@ -1,0 +1,13 @@
+# Target labels
+ liburing_ext
+# Source files and their labels
+/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/liburing_ext
+/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/liburing_ext.rule
+/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/liburing_ext-complete.rule
+/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-build.rule
+/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-configure.rule
+/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-download.rule
+/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-install.rule
+/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-mkdir.rule
+/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-patch.rule
+/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-update.rule

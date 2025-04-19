@@ -27,14 +27,15 @@ macro(build_spdk)
   include(ExternalProject)
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|x86_64|AMD64")
     # a safer option than relying on the build host's arch
-    set(target_arch core2)
+    # set(target_arch core2)
+    set(target_arch native)
   else()
     # default arch used by SPDK
     set(target_arch native)
   endif()
 
   set(source_dir "${CMAKE_SOURCE_DIR}/src/spdk")
-  foreach(c lvol env_dpdk sock nvmf bdev nvme conf thread trace notify accel event_accel blob vmd event_vmd event_bdev sock_posix event_sock event rpc jsonrpc json util log)
+  foreach(c lvol smart_nvme sock nvmf bdev nvme env_dpdk conf thread trace notify accel event_accel blob vmd event_vmd event_bdev sock_posix event_sock event_scheduler event dma event_keyring keyring_linux keyring rpc jsonrpc json util log)
     add_library(spdk::${c} STATIC IMPORTED)
     set(lib_path "${source_dir}/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}spdk_${c}${CMAKE_STATIC_LIBRARY_SUFFIX}")
     set_target_properties(spdk::${c} PROPERTIES
@@ -49,8 +50,10 @@ macro(build_spdk)
     SOURCE_DIR ${source_dir}
     CONFIGURE_COMMAND ./configure
       --with-dpdk=${DPDK_DIR}
-      --without-isal
+      --set-uintrmode
       --without-vhost
+      --disable-tests
+      --disable-unit-tests
       --target-arch=${target_arch}
     # unset $CFLAGS, otherwise it will interfere with how SPDK sets
     # its include directory.

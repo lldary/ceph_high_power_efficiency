@@ -1,0 +1,1 @@
+cmd='/usr/bin/cmake;-DBUILD_SHARED_LIBS=OFF;-DCMAKE_PREFIX_PATH=;-DCMAKE_C_COMPILER=/usr/bin/cc;-DCMAKE_AR=/usr/bin/ar;-DCMAKE_BUILD_TYPE=Debug;-DCMAKE_INSTALL_PREFIX=/home/led/workspace/ceph_high_power_efficiency/src/utf8proc/install;-DCMAKE_INSTALL_LIBDIR=lib;-GUnix Makefiles;<SOURCE_DIR><SOURCE_SUBDIR>'

@@ -1,0 +1,11 @@
+file(REMOVE_RECURSE
+  "../../../bin/ceph_test_librbd"
+  "../../../bin/ceph_test_librbd.pdb"
+  "CMakeFiles/ceph_test_librbd.dir/test_main.cc.o"
+  "CMakeFiles/ceph_test_librbd.dir/test_main.cc.o.d"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/ceph_test_librbd.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

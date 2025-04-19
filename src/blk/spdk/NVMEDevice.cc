@@ -571,9 +571,9 @@ int NVMEManager::try_get(const spdk_nvme_transport_id& trid, SharedDriverData **
         spdk_env_opts_init(&opts);
         opts.name = "nvme-device-manager";
         opts.core_mask = coremask_arg.c_str();
-        opts.master_core = m_core_arg;
+        opts.main_core = m_core_arg;
         opts.mem_size = mem_size_arg;
-        opts.pci_whitelist = &addr;
+        opts.pci_allowed = &addr;
         opts.num_pci_addr = 1;
         spdk_env_init(&opts);
         spdk_unaffinitize_thread();

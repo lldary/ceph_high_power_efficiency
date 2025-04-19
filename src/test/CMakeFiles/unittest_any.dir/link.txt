@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -Og  -rdynamic -pie CMakeFiles/unittest_any.dir/test_any.cc.o -o ../../bin/unittest_any  ../../lib/libgmock_maind.a ../../lib/libgmockd.a ../../lib/libgtestd.a -ldl 

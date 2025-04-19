@@ -36,6 +36,7 @@ endif(HAVE_LIBAIO)
 
 if(WITH_SPDK)
   target_link_libraries(blk PRIVATE ${SPDK_LIBRARIES})
+  target_link_libraries(blk PRIVATE "/usr/lib/x86_64-linux-gnu/libssl.so")
 endif()
 
 if(WITH_ZBD)

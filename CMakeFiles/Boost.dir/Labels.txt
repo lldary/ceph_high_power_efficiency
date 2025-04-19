@@ -1,0 +1,13 @@
+# Target labels
+ Boost
+# Source files and their labels
+/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/Boost
+/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/Boost.rule
+/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/Boost-complete.rule
+/home/led/workspace/ceph_high_power_efficiency/boost/src/Boost-stamp/Boost-build.rule
+/home/led/workspace/ceph_high_power_efficiency/boost/src/Boost-stamp/Boost-configure.rule
+/home/led/workspace/ceph_high_power_efficiency/boost/src/Boost-stamp/Boost-download.rule
+/home/led/workspace/ceph_high_power_efficiency/boost/src/Boost-stamp/Boost-install.rule
+/home/led/workspace/ceph_high_power_efficiency/boost/src/Boost-stamp/Boost-mkdir.rule
+/home/led/workspace/ceph_high_power_efficiency/boost/src/Boost-stamp/Boost-patch.rule
+/home/led/workspace/ceph_high_power_efficiency/boost/src/Boost-stamp/Boost-update.rule

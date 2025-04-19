@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/liburing_ext"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/liburing_ext.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/CMakeFiles/liburing_ext-complete.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-build.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-configure.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-download.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-install.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-mkdir.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-patch.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/liburing_ext-prefix/src/liburing_ext-stamp/liburing_ext-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"liburing_ext"
+		],
+		"name" : "liburing_ext"
+	}
+}

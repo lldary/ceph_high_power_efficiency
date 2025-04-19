@@ -60,18 +60,18 @@ function(do_build_dpdk dpdk_dir)
 
   include(FindMake)
   find_make("MAKE_EXECUTABLE" "make_cmd")
-  execute_process(
-    COMMAND ${MAKE_EXECUTABLE} showconfigs
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/spdk/dpdk
-    OUTPUT_VARIABLE supported_targets
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-  string(REPLACE "\n" ";" supported_targets "${supported_targets}")
-  list(FIND supported_targets ${target} found)
-  if(found EQUAL -1)
-    message(FATAL_ERROR "not able to build DPDK support: "
-      "unsupported target. "
-      "\"${target}\" not listed in ${supported_targets}")
-  endif()
+  # execute_process(
+  #   COMMAND ${MAKE_EXECUTABLE} showconfigs
+  #   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/spdk/dpdk
+  #   OUTPUT_VARIABLE supported_targets
+  #   OUTPUT_STRIP_TRAILING_WHITESPACE)
+  # string(REPLACE "\n" ";" supported_targets "${supported_targets}")
+  # list(FIND supported_targets ${target} found)
+  # if(found EQUAL -1)
+  #   message(FATAL_ERROR "not able to build DPDK support: "
+  #     "unsupported target. "
+  #     "\"${target}\" not listed in ${supported_targets}")
+  # endif()
 
   if(Seastar_DPDK AND WITH_SPDK)
     message(FATAL_ERROR "not able to build DPDK with "
@@ -90,11 +90,15 @@ function(do_build_dpdk dpdk_dir)
     string(APPEND extra_cflags " -Wno-unused-but-set-variable")
   endif()
 
+  message("DPDK build dir: ${dpdk_dir}")
+
+  string(APPEND extra_cflags " -Wno-stringop-overflow -fcommon -Wno-error")
+
   include(ExternalProject)
   ExternalProject_Add(dpdk-ext
     SOURCE_DIR ${dpdk_source_dir}
-    CONFIGURE_COMMAND ${make_cmd} config O=${dpdk_dir} T=${target}
-    BUILD_COMMAND ${make_cmd} O=${dpdk_dir} CC=${CMAKE_C_COMPILER} EXTRA_CFLAGS=${extra_cflags} RTE_DEVEL_BUILD=n
+    CONFIGURE_COMMAND env -u MAKEFLAGS meson setup -D default_library=static -D prefix=${dpdk_dir} -D c_args=${extra_cflags} --buildtype=debug -D default_library=static -D disable_apps=test-flow-perf,test,test-mldev,test-dma-perf,test-gpudev,test-eventdev,test-regex,test-pipeline,proc-info,graph,dumpcap,test-compress-perf,test-crypto-perf,test-acl,test-sad,test-pmd,test-security-perf,test-bbdev,test-fib,pdump,test-cmdline -D disable_libs=pdcp,bbdev,eventdev,stack,argparse,metrics,gro,rib,acl,fib,port,gpudev,gso,table,dispatcher,graph,lpm,bitratestats,sched,cfgfile,latencystats,rawdev,mldev,regexdev,pipeline,jobstats,bpf,ipsec,distributor,pcapng,node,ip_frag,member,pdump -D enable_docs=false -D enable_drivers=bus,bus/pci,bus/vdev,mempool/ring -D enable_kmods=false -D libdir=lib -D max_lcores=128 -D tests=false ${dpdk_dir}/build-tmp
+    BUILD_COMMAND env -u MAKEFLAGS meson install -C ${dpdk_dir}/build-tmp
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND ""
     LOG_CONFIGURE ON
@@ -106,12 +110,12 @@ function(do_build_dpdk dpdk_dir)
   else()
     set(numa "n")
   endif()
-  ExternalProject_Add_Step(dpdk-ext patch-config
-    COMMAND ${CMAKE_MODULE_PATH}/patch-dpdk-conf.sh ${dpdk_dir} ${machine} ${arch} ${numa}
-    DEPENDEES configure
-    DEPENDERS build)
-  # easier to adjust the config
-  ExternalProject_Add_StepTargets(dpdk-ext configure patch-config build)
+  # ExternalProject_Add_Step(dpdk-ext patch-config
+  #   COMMAND ${CMAKE_MODULE_PATH}/patch-dpdk-conf.sh ${dpdk_dir} ${machine} ${arch} ${numa}
+  #   DEPENDEES configure
+  #   DEPENDERS build)
+  # # easier to adjust the config
+  # ExternalProject_Add_StepTargets(dpdk-ext configure patch-config build)
 endfunction()
 
 function(do_export_dpdk dpdk_dir)
@@ -137,6 +141,7 @@ function(do_export_dpdk dpdk_dir)
     mempool_ring
     pci
     ring
+    log
     telemetry)
   if(Seastar_DPDK)
     list(APPEND dpdk_components

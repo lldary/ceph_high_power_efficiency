@@ -1,0 +1,2 @@
+using gcc :  : /usr/bin/c++ ;
+using python : 3.10 : /usr/bin/python3.10 : /usr/include/python3.10 : /usr/lib/x86_64-linux-gnu/libpython3.10.so ;

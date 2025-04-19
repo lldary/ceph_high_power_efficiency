@@ -1,0 +1,13 @@
+# Target labels
+ zstd_ext
+# Source files and their labels
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/CMakeFiles/zstd_ext
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/CMakeFiles/zstd_ext.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/CMakeFiles/zstd_ext-complete.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/zstd_ext-prefix/src/zstd_ext-stamp/zstd_ext-build.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/zstd_ext-prefix/src/zstd_ext-stamp/zstd_ext-configure.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/zstd_ext-prefix/src/zstd_ext-stamp/zstd_ext-download.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/zstd_ext-prefix/src/zstd_ext-stamp/zstd_ext-install.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/zstd_ext-prefix/src/zstd_ext-stamp/zstd_ext-mkdir.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/zstd_ext-prefix/src/zstd_ext-stamp/zstd_ext-patch.rule
+/home/led/workspace/ceph_high_power_efficiency/src/compressor/zstd/zstd_ext-prefix/src/zstd_ext-stamp/zstd_ext-update.rule

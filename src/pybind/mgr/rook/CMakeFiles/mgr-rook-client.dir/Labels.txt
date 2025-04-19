@@ -1,0 +1,13 @@
+# Target labels
+ mgr-rook-client
+# Source files and their labels
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/CMakeFiles/mgr-rook-client
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/CMakeFiles/mgr-rook-client.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/CMakeFiles/mgr-rook-client-complete.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/mgr-rook-client-prefix/src/mgr-rook-client-stamp/mgr-rook-client-build.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/mgr-rook-client-prefix/src/mgr-rook-client-stamp/mgr-rook-client-configure.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/mgr-rook-client-prefix/src/mgr-rook-client-stamp/mgr-rook-client-download.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/mgr-rook-client-prefix/src/mgr-rook-client-stamp/mgr-rook-client-install.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/mgr-rook-client-prefix/src/mgr-rook-client-stamp/mgr-rook-client-mkdir.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/mgr-rook-client-prefix/src/mgr-rook-client-stamp/mgr-rook-client-patch.rule
+/home/led/workspace/ceph_high_power_efficiency/src/pybind/mgr/rook/mgr-rook-client-prefix/src/mgr-rook-client-stamp/mgr-rook-client-update.rule

@@ -1,0 +1,1 @@
+/usr/bin/cc -g  -rdynamic -pie CMakeFiles/test_c_headers.dir/test_c_headers.c.o -o ../../bin/test_c_headers  -Wl,-rpath,/home/led/workspace/ceph_high_power_efficiency/lib ../../lib/librados.so.2.0.0 ../../lib/libcephfs.so.2.0.0 -Wl,-rpath-link,/home/led/workspace/ceph_high_power_efficiency/lib 

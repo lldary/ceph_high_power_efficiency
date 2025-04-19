@@ -1,0 +1,13 @@
+# Target labels
+ arrow_ext
+# Source files and their labels
+/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/arrow_ext
+/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/arrow_ext.rule
+/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/arrow_ext-complete.rule
+/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-build.rule
+/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-configure.rule
+/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-download.rule
+/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-install.rule
+/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-mkdir.rule
+/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-patch.rule
+/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-update.rule

@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/arrow_ext"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/arrow_ext.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/arrow_ext-complete.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-build.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-configure.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-download.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-install.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-mkdir.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-patch.rule"
+		},
+		{
+			"file" : "/home/led/workspace/ceph_high_power_efficiency/src/arrow_ext-prefix/src/arrow_ext-stamp/arrow_ext-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"arrow_ext"
+		],
+		"name" : "arrow_ext"
+	}
+}

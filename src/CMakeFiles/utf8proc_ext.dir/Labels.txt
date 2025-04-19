@@ -1,0 +1,13 @@
+# Target labels
+ utf8proc_ext
+# Source files and their labels
+/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/utf8proc_ext
+/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/utf8proc_ext.rule
+/home/led/workspace/ceph_high_power_efficiency/src/CMakeFiles/utf8proc_ext-complete.rule
+/home/led/workspace/ceph_high_power_efficiency/src/utf8proc_ext-prefix/src/utf8proc_ext-stamp/utf8proc_ext-build.rule
+/home/led/workspace/ceph_high_power_efficiency/src/utf8proc_ext-prefix/src/utf8proc_ext-stamp/utf8proc_ext-configure.rule
+/home/led/workspace/ceph_high_power_efficiency/src/utf8proc_ext-prefix/src/utf8proc_ext-stamp/utf8proc_ext-download.rule
+/home/led/workspace/ceph_high_power_efficiency/src/utf8proc_ext-prefix/src/utf8proc_ext-stamp/utf8proc_ext-install.rule
+/home/led/workspace/ceph_high_power_efficiency/src/utf8proc_ext-prefix/src/utf8proc_ext-stamp/utf8proc_ext-mkdir.rule
+/home/led/workspace/ceph_high_power_efficiency/src/utf8proc_ext-prefix/src/utf8proc_ext-stamp/utf8proc_ext-patch.rule
+/home/led/workspace/ceph_high_power_efficiency/src/utf8proc_ext-prefix/src/utf8proc_ext-stamp/utf8proc_ext-update.rule
