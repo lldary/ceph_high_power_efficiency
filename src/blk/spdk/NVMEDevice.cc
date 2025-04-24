@@ -31,6 +31,7 @@
 #include <boost/intrusive/slist.hpp>
 
 #include <spdk/nvme.h>
+#include <spdk/smart_nvme.h>
 
 #include "include/intarith.h"
 #include "include/stringify.h"
@@ -127,7 +128,7 @@ class SharedDriverQueueData {
   std::string sn;
   uint32_t block_size;
   uint32_t max_queue_depth;
-  struct spdk_nvme_qpair *qpair;
+  struct spdk_plus_smart_nvme *qpair;
   int alloc_buf_from_pool(Task *t, bool write);
 
   public:
@@ -148,7 +149,8 @@ class SharedDriverQueueData {
     opts.qprio = SPDK_NVME_QPRIO_URGENT;
     // usable queue depth should minus 1 to aovid overflow.
     max_queue_depth = opts.io_queue_size - 1;
-    qpair = spdk_nvme_ctrlr_alloc_io_qpair(ctrlr, &opts, sizeof(opts));
+    // qpair = spdk_nvme_ctrlr_alloc_io_qpair(ctrlr, &opts, sizeof(opts));
+    qpair = spdk_plus_nvme_ctrlr_alloc_io_device(ctrlr, &opts, sizeof(opts));
     ceph_assert(qpair != NULL);
 
     // allocate spdk dma memory
@@ -164,7 +166,8 @@ class SharedDriverQueueData {
 
   ~SharedDriverQueueData() {
     if (qpair) {
-      spdk_nvme_ctrlr_free_io_qpair(qpair);
+      // spdk_nvme_ctrlr_free_io_qpair(qpair);
+      spdk_plus_nvme_ctrlr_free_io_qpair(qpair);
     }
 
     data_buf_list.clear_and_dispose(spdk_dma_free);
@@ -337,7 +340,8 @@ void SharedDriverQueueData::_aio_handle(Task *t, IOContext *ioc)
  again:
     dout(40) << __func__ << " polling" << dendl;
     if (current_queue_depth) {
-      r = spdk_nvme_qpair_process_completions(qpair, max_io_completion);
+      // r = spdk_nvme_qpair_process_completions(qpair, max_io_completion);
+      r = spdk_plus_nvme_process_completions(qpair, max_io_completion);
       if (r < 0) {
         ceph_abort();
       } else if (r == 0) {
@@ -363,7 +367,10 @@ void SharedDriverQueueData::_aio_handle(Task *t, IOContext *ioc)
             goto again;
           }
 
-          r = spdk_nvme_ns_cmd_writev(
+          // r = spdk_nvme_ns_cmd_writev(
+          //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
+          //     data_buf_reset_sgl, data_buf_next_sge);
+          r = spdk_plus_nvme_ns_cmd_writev(
               ns, qpair, lba_off, lba_count, io_complete, t, 0,
               data_buf_reset_sgl, data_buf_next_sge);
           if (r < 0) {
@@ -383,7 +390,10 @@ void SharedDriverQueueData::_aio_handle(Task *t, IOContext *ioc)
             goto again;
           }
 
-          r = spdk_nvme_ns_cmd_readv(
+          // r = spdk_nvme_ns_cmd_readv(
+          //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
+          //     data_buf_reset_sgl, data_buf_next_sge);
+          r = spdk_plus_nvme_ns_cmd_readv(
               ns, qpair, lba_off, lba_count, io_complete, t, 0,
               data_buf_reset_sgl, data_buf_next_sge);
           if (r < 0) {
@@ -397,7 +407,8 @@ void SharedDriverQueueData::_aio_handle(Task *t, IOContext *ioc)
         case IOCommand::FLUSH_COMMAND:
         {
           dout(20) << __func__ << " flush command issueed " << dendl;
-          r = spdk_nvme_ns_cmd_flush(ns, qpair, io_complete, t);
+          // r = spdk_nvme_ns_cmd_flush(ns, qpair, io_complete, t);
+          r = spdk_plus_nvme_ns_cmd_flush(ns, qpair, io_complete, t);
           if (r < 0) {
             derr << __func__ << " failed to flush: " << cpp_strerror(r) << dendl;
             t->release_segs(this);
@@ -576,6 +587,7 @@ int NVMEManager::try_get(const spdk_nvme_transport_id& trid, SharedDriverData **
         opts.pci_allowed = &addr;
         opts.num_pci_addr = 1;
         spdk_env_init(&opts);
+        spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_BALANCE, NULL, NULL);
         spdk_unaffinitize_thread();
 
         std::unique_lock l(probe_queue_lock);
