@@ -233,7 +233,10 @@ function install_boost_on_ubuntu {
         ceph-libboost-system${boost_ver}-dev \
         ceph-libboost-test${boost_ver}-dev \
         ceph-libboost-thread${boost_ver}-dev \
-        ceph-libboost-timer${boost_ver}-dev
+        ceph-libboost-timer${boost_ver}-dev \
+        meson # dpdk编译支持
+
+    $sudo ./src/spdk/scripts/pkgdep.sh # spdk编译支持
 }
 
 function install_libzbd_on_ubuntu {

@@ -51,6 +51,7 @@ macro(build_spdk)
     CONFIGURE_COMMAND ./configure
       --with-dpdk=${DPDK_DIR}
       --set-uintrmode
+      --without-crypto
       --without-vhost
       --disable-tests
       --disable-unit-tests

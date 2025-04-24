@@ -35,8 +35,11 @@ if(HAVE_LIBAIO)
 endif(HAVE_LIBAIO)
 
 if(WITH_SPDK)
+  target_link_libraries(blk PRIVATE "-Wl,--whole-archive")
   target_link_libraries(blk PRIVATE ${SPDK_LIBRARIES})
-  target_link_libraries(blk PRIVATE "/usr/lib/x86_64-linux-gnu/libssl.so")
+  target_link_libraries(blk PRIVATE "-Wl,--no-whole-archive")
+  target_link_libraries(blk PRIVATE ${_OPENSSL_LDFLAGS})
+  target_link_libraries(blk PRIVATE "-L${CMAKE_SOURCE_DIR}/src/spdk/isa-l/.libs -lisal")
 endif()
 
 if(WITH_ZBD)
