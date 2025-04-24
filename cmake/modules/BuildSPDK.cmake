@@ -35,7 +35,7 @@ macro(build_spdk)
   endif()
 
   set(source_dir "${CMAKE_SOURCE_DIR}/src/spdk")
-  foreach(c smart_nvme lvol sock nvmf bdev nvme env_dpdk conf thread trace notify accel event_accel blob vmd event_vmd event_bdev sock_posix event_sock event_scheduler event dma event_keyring keyring_linux keyring rpc jsonrpc json util log)
+  foreach(c lvol smart_nvme sock nvmf bdev nvme env_dpdk conf thread trace notify accel event_accel blob vmd event_vmd event_bdev sock_posix event_sock event_scheduler event dma event_keyring keyring_linux keyring rpc jsonrpc json util log)
     add_library(spdk::${c} STATIC IMPORTED)
     set(lib_path "${source_dir}/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}spdk_${c}${CMAKE_STATIC_LIBRARY_SUFFIX}")
     set_target_properties(spdk::${c} PROPERTIES
