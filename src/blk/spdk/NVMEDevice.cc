@@ -150,7 +150,11 @@ class SharedDriverQueueData {
     // usable queue depth should minus 1 to aovid overflow.
     max_queue_depth = opts.io_queue_size - 1;
     // qpair = spdk_nvme_ctrlr_alloc_io_qpair(ctrlr, &opts, sizeof(opts));
-    qpair = spdk_plus_nvme_ctrlr_alloc_io_device(ctrlr, &opts, sizeof(opts));
+    int rc;
+    qpair = spdk_plus_nvme_ctrlr_alloc_io_device(ctrlr, &opts, sizeof(opts), &rc);
+    if (qpair == NULL) {
+      derr << __func__ << " failed to create io qpair rc = " << rc << dendl;
+    }
     ceph_assert(qpair != NULL);
 
     // allocate spdk dma memory
