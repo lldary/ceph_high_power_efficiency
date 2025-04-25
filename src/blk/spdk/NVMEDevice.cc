@@ -238,6 +238,7 @@ struct Task {
 
 static void data_buf_reset_sgl(void *cb_arg, uint32_t sgl_offset)
 {
+  cb_arg = spdk_plus_get_cb_arg(cb_arg);
   Task *t = static_cast<Task*>(cb_arg);
   uint32_t i = sgl_offset / data_buffer_size;
   uint32_t offset = i * data_buffer_size;
@@ -259,6 +260,7 @@ static void data_buf_reset_sgl(void *cb_arg, uint32_t sgl_offset)
 
 static int data_buf_next_sge(void *cb_arg, void **address, uint32_t *length)
 {
+  cb_arg = spdk_plus_get_cb_arg(cb_arg);
   uint32_t size;
   void *addr;
   Task *t = static_cast<Task*>(cb_arg);
@@ -587,7 +589,7 @@ int NVMEManager::try_get(const spdk_nvme_transport_id& trid, SharedDriverData **
         opts.pci_allowed = &addr;
         opts.num_pci_addr = 1;
         spdk_env_init(&opts);
-        spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_BALANCE, NULL, NULL);
+        spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_SUPER_PERFORMANCE, NULL, NULL);
         spdk_unaffinitize_thread();
 
         std::unique_lock l(probe_queue_lock);
