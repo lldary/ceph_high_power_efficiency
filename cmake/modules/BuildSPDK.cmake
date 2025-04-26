@@ -51,6 +51,7 @@ macro(build_spdk)
     CONFIGURE_COMMAND ./configure
       --with-dpdk=${DPDK_DIR}
       --set-uintrmode
+      --enable-debug
       --without-crypto
       --without-vhost
       --disable-tests
@@ -59,7 +60,7 @@ macro(build_spdk)
     # unset $CFLAGS, otherwise it will interfere with how SPDK sets
     # its include directory.
     # unset $LDFLAGS, otherwise SPDK will fail to mock some functions.
-    BUILD_COMMAND env -i PATH=$ENV{PATH} CC=${CMAKE_C_COMPILER} ${make_cmd} EXTRA_CFLAGS=${spdk_CFLAGS}
+    BUILD_COMMAND env -i PATH=$ENV{PATH} CC=${CMAKE_C_COMPILER} ${make_cmd} EXTRA_CFLAGS=${spdk_CFLAGS} -j ${SPDK_J}
     BUILD_IN_SOURCE 1
     BUILD_BYPRODUCTS ${spdk_libs}
     INSTALL_COMMAND ""
