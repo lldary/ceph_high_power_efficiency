@@ -169,6 +169,9 @@ zoned_enabled=0
 io_uring_enabled=0
 with_jaeger=0
 
+OSD_OP_NUM_SHARDS_SSD=8
+OSD_OP_NUM_THREADS_PER_SHARD_SSD=2
+
 with_mgr_dashboard=true
 if [[ "$(get_cmake_variable WITH_MGR_DASHBOARD_FRONTEND)" != "ON" ]] ||
    [[ "$(get_cmake_variable WITH_RBD)" != "ON" ]]; then
@@ -238,6 +241,8 @@ options:
 	--crimson: use crimson-osd instead of ceph-osd
 	--crimson-foreground: use crimson-osd, but run it in the foreground
 	--osd-args: specify any extra osd specific options
+    --osd-op-num-shards-ssd: specify the number of shards for SSD OSDs
+    --osd-op-num-threads-per-shard-ssd: specify the number of threads per shard for SSD OSDs
 	--bluestore-devs: comma-separated list of blockdevs to use for bluestore
 	--bluestore-zoned: blockdevs listed by --bluestore-devs are zoned devices (HM-SMR HDD or ZNS SSD)
 	--bluestore-io-uring: enable io_uring backend
@@ -481,6 +486,14 @@ case $1 in
         ;;
     --multimds)
         CEPH_MAX_MDS="$2"
+        shift
+        ;;
+    --osd-op-num-shards-ssd)
+        OSD_OP_NUM_SHARDS_SSD="$2"
+        shift
+        ;;
+    --osd-op-num-threads-per-shard-ssd)
+        OSD_OP_NUM_THREADS_PER_SHARD_SSD="$2"
         shift
         ;;
     --without-dashboard)
@@ -785,6 +798,9 @@ $DAEMONOPTS
         osd class load list = *
         osd class default list = *
         osd fast shutdown = false
+
+        osd_op_num_threads_per_shard_ssd = $OSD_OP_NUM_THREADS_PER_SHARD_SSD
+        osd_op_num_shards_ssd = $OSD_OP_NUM_SHARDS_SSD
 
         filestore wbthrottle xfs ios start flusher = 10
         filestore wbthrottle xfs ios hard limit = 20
