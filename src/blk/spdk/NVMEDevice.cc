@@ -138,6 +138,7 @@ class SharedDriverQueueData
   spdk_nvme_ctrlr *ctrlr;
   spdk_nvme_ns *ns;
   std::string sn;
+  std::thread handle_thread;
   uint32_t block_size;
   uint32_t max_queue_depth;
   struct spdk_plus_smart_nvme *qpair;
@@ -670,7 +671,7 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
           opts.pci_allowed = &addr;
           opts.num_pci_addr = 1;
           spdk_env_init(&opts);
-          spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_PERFORMANCE, NULL, NULL);
+          spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_SUPER_POWER_SAVE, NULL, NULL);
           spdk_unaffinitize_thread();
 
           std::unique_lock l(probe_queue_lock);

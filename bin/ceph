@@ -37,8 +37,8 @@ try:
 except NameError:
     pass
 
-CEPH_GIT_VER = "85eeecbeea24b2949ab79bbed9fb083b920a70af"
-CEPH_GIT_NICE_VER = "5eeecbeea"
+CEPH_GIT_VER = "280cc2dd7784ec10c76b625962695347eb3378d3"
+CEPH_GIT_NICE_VER = "80cc2dd77"
 CEPH_RELEASE = "17"
 CEPH_RELEASE_NAME = "quincy"
 CEPH_RELEASE_TYPE = "stable"
