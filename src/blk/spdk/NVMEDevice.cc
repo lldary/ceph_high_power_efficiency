@@ -440,10 +440,13 @@ again:
 
   for (; t; t = t->next)
   {
-    if (current_queue_depth == max_queue_depth)
+    if (qpair->curr_depth.load() == max_queue_depth)
     {
       // no slots
-      goto again;
+      std::unique_lock lock(qpair->sq_mutex);
+      qpair->sq_cv.wait(lock, [this]
+                        { return qpair->curr_depth.load() < max_queue_depth; });
+      // goto again;
     }
 
     t->queue = this;
@@ -748,7 +751,7 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
           {
             delete *g_qpair_manager_ptr;
             *g_qpair_manager_ptr = nullptr;
-            infoLog("g_qpair_manager is null");
+            infoLog("g_qpair_manager is null\n");
           }
           probe_queue_cond.notify_all();
           debugLog("spdk env thread exiting\n");

@@ -37,6 +37,7 @@ int SPDK_NVME_SQ::submit_cmd_readv(struct spdk_nvme_ns *ns,
     {
         return -1; // 队列已满
     }
+    curr_depth.fetch_add(1);
     sql->cmd = IOCommand::READ_COMMAND;
     sql->ns = ns;
     sql->lba = lba;
@@ -61,6 +62,7 @@ int SPDK_NVME_SQ::submit_cmd_writev(struct spdk_nvme_ns *ns,
     {
         return -1; // 队列已满
     }
+    curr_depth.fetch_add(1);
     sql->cmd = IOCommand::WRITE_COMMAND;
     sql->ns = ns;
     sql->lba = lba;
@@ -82,6 +84,7 @@ int SPDK_NVME_SQ::submit_cmd_flush(struct spdk_nvme_ns *ns,
     {
         return -1; // 队列已满
     }
+    curr_depth.fetch_add(1);
     sql->cmd = IOCommand::FLUSH_COMMAND;
     sql->ns = ns;
     sql->cb_fn = cb_fn;
@@ -166,7 +169,7 @@ void SPDK_NVME_QPAIR::start_thread(NVMEDevice *bdev, struct spdk_nvme_ctrlr *t_c
             spdk_plus_nvme_ctrlr_free_io_qpair(this->qpair);
             this->qpair = NULL;
             
-            infoLog("Thread exiting"); });
+            infoLog("Thread exiting\n"); });
 
     {
         std::unique_lock<std::mutex> lock(mutex);
@@ -234,6 +237,8 @@ bool SPDK_NVME_QPAIR::submit_io_internel(SPDK_NVME_SQ *sq)
         // 更新队列头指针
         sq->head = (sq->head + 1) % sq->length;
         memset(sql, 0, sizeof(SPDK_NVME_QPAIR_SQL));
+        sq->curr_depth.fetch_sub(1);
+        sq->sq_cv.notify_one(); // 通知等待的线程
         current_queue_depth++;
         return true;
     }
@@ -247,13 +252,17 @@ bool SPDK_NVME_QPAIR::submit_io()
 {
     bool no_cmd = false;
     bool send_cmd = false;
-    while (current_queue_depth < max_queue_depth / 2 && !no_cmd)
+    uint16_t already_submit_number = 0;
+    uint16_t last_current_queue_depth = current_queue_depth;
+    while (current_queue_depth < max_queue_depth && !no_cmd && already_submit_number < 16)
     {
         no_cmd = !submit_io_internel(sq_list[0]) && !submit_io_internel(sq_list[1]) && !submit_io_internel(sq_list[2]) && !submit_io_internel(sq_list[3]);
         if (!no_cmd)
         {
             send_cmd = true;
         }
+        already_submit_number += (current_queue_depth - last_current_queue_depth);
+        last_current_queue_depth = current_queue_depth;
     }
     return send_cmd;
 }

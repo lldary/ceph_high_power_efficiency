@@ -109,7 +109,6 @@ public:
     int err = safe_read_exact(fd[0], &r, sizeof(r));
     if (err == 0 && r == -1)
     {
-      std::cerr << __FUNCTION__ << ":" << __LINE__ << " read error: " << cpp_strerror(r) << std::endl;
       // daemonize
       ::close(0);
       ::close(1);
@@ -117,16 +116,13 @@ public:
     }
     else if (err)
     {
-      std::cerr << __FUNCTION__ << ":" << __LINE__ << " read error: " << cpp_strerror(r) << std::endl;
       oss << "[" << getpid() << "]: " << cpp_strerror(err);
     }
     else
     {
       // wait for child to exit
-      std::cerr << __FUNCTION__ << ":" << __LINE__ << " pid: " << getpid() << "err: " << err << " read error: " << cpp_strerror(r) << std::endl;
       int status;
       err = waitpid(childpid, &status, 0);
-      std::cerr << __FUNCTION__ << ":" << __LINE__ << " waitpid error: " << cpp_strerror(err) << std::endl;
       if (err < 0)
       {
         oss << "[" << getpid() << "]" << " waitpid error: " << cpp_strerror(err);
@@ -147,7 +143,6 @@ public:
       }
     }
     err_msg = oss.str();
-    std::cerr << __FUNCTION__ << ":" << __LINE__ << " err_msg: " << err_msg << std::endl;
     return err;
   }
 
@@ -164,7 +159,6 @@ public:
   {
     if (is_child())
       signal_exit(r);
-    std::cerr << __FUNCTION__ << ":" << __LINE__ << " pid: " << getpid() << " exit: " << r << std::endl;
     ::exit(r);
   }
 

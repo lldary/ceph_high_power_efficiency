@@ -37,8 +37,11 @@ struct SPDK_NVME_SQ
     uint16_t length;
     uint16_t head;
     uint16_t tail;
+    std::atomic_uint16_t curr_depth; // 当前深度
     std::condition_variable *cv;
     SPDK_NVME_QPAIR_SQL *sq; // 指向命令队列的指针
+    std::mutex sq_mutex;
+    std::condition_variable sq_cv;
 
     SPDK_NVME_SQ(uint16_t length, std::condition_variable *cv);
 
