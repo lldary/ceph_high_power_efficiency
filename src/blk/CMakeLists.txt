@@ -17,7 +17,9 @@ endif()
 
 if(WITH_SPDK)
   list(APPEND libblk_srcs
-    spdk/NVMEDevice.cc)
+    spdk/NVMEDevice.cc
+    spdk/NVMeQPair.cc
+    spdk/NVMeLog.cc)
 endif()
 
 if(WITH_ZBD)

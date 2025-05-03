@@ -43,6 +43,8 @@
 
 #include "NVMEDevice.h"
 
+#include "NVMeQPair.h"
+
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_bdev
 #undef dout_prefix
@@ -56,7 +58,13 @@ static constexpr uint32_t data_buffer_size = 8192;
 
 static constexpr uint16_t inline_segment_num = 32;
 
+SPDK_NVME_QPAIR_MANAGER *g_qpair_manager = nullptr;
+
 static void io_complete(void *t, const struct spdk_nvme_cpl *completion);
+
+static void data_buf_reset_sgl(void *cb_arg, uint32_t sgl_offset);
+
+static int data_buf_next_sge(void *cb_arg, void **address, uint32_t *length);
 
 struct IORequest
 {
@@ -141,13 +149,15 @@ class SharedDriverQueueData
   std::thread handle_thread;
   uint32_t block_size;
   uint32_t max_queue_depth;
-  struct spdk_plus_smart_nvme *qpair;
+  // struct spdk_plus_smart_nvme *qpair;
+  SPDK_NVME_SQ *qpair;
   int alloc_buf_from_pool(Task *t, bool write);
 
 public:
   uint32_t current_queue_depth = 0;
   std::atomic_ulong completed_op_seq, queue_op_seq;
   bi::slist<data_cache_buf, bi::constant_time_size<true>> data_buf_list;
+  SpinLock spinlock;
   void _aio_handle(Task *t, IOContext *ioc);
 
   SharedDriverQueueData(NVMEDevice *bdev, SharedDriverData *driver)
@@ -165,13 +175,19 @@ public:
     max_queue_depth = opts.io_queue_size - 1;
     // qpair = spdk_nvme_ctrlr_alloc_io_qpair(ctrlr, &opts, sizeof(opts));
     int rc;
-    qpair = spdk_plus_nvme_ctrlr_alloc_io_device(ctrlr, &opts, sizeof(opts), &rc);
+    rc = 0;
+    // qpair = spdk_plus_nvme_ctrlr_alloc_io_device(ctrlr, &opts, sizeof(opts), &rc);
+    if (g_qpair_manager)
+      qpair = g_qpair_manager->create_qpair(bdev, ctrlr, ns, block_size, data_buf_reset_sgl, data_buf_next_sge, io_complete);
+    else
+      ceph_abort_msg("g_qpair_manager is null");
     if (qpair == NULL)
     {
       derr << __func__ << " failed to create io qpair rc = " << rc << dendl;
     }
     ceph_assert(qpair != NULL);
 
+    spinlock.Lock();
     // allocate spdk dma memory
     for (uint16_t i = 0; i < data_buffer_default_num; i++)
     {
@@ -183,6 +199,7 @@ public:
       }
       data_buf_list.push_front(*reinterpret_cast<data_cache_buf *>(b));
     }
+    spinlock.Unlock();
   }
 
   ~SharedDriverQueueData()
@@ -190,10 +207,15 @@ public:
     if (qpair)
     {
       // spdk_nvme_ctrlr_free_io_qpair(qpair);
-      spdk_plus_nvme_ctrlr_free_io_qpair(qpair);
+      // spdk_plus_nvme_ctrlr_free_io_qpair(qpair);
+      if (g_qpair_manager)
+        g_qpair_manager->free_qpair(qpair);
+      else
+        ceph_abort_msg("g_qpair_manager is null");
     }
-
+    spinlock.Lock();
     data_buf_list.clear_and_dispose(spdk_dma_free);
+    spinlock.Unlock();
   }
 };
 
@@ -234,20 +256,24 @@ struct Task
   {
     if (io_request.extra_segs)
     {
+      queue_data->spinlock.Lock();
       for (uint16_t i = 0; i < io_request.nseg; i++)
       {
         auto buf = reinterpret_cast<data_cache_buf *>(io_request.extra_segs[i]);
         queue_data->data_buf_list.push_front(*buf);
       }
+      queue_data->spinlock.Unlock();
       delete io_request.extra_segs;
     }
     else if (io_request.nseg)
     {
+      queue_data->spinlock.Lock();
       for (uint16_t i = 0; i < io_request.nseg; i++)
       {
         auto buf = reinterpret_cast<data_cache_buf *>(io_request.inline_segs[i]);
         queue_data->data_buf_list.push_front(*buf);
       }
+      queue_data->spinlock.Unlock();
     }
     ctx->total_nseg -= io_request.nseg;
     io_request.nseg = 0;
@@ -342,8 +368,13 @@ int SharedDriverQueueData::alloc_buf_from_pool(Task *t, bool write)
   if (t->len % data_buffer_size)
     ++count;
   void **segs;
+  spinlock.Lock();
   if (count > data_buf_list.size())
+  {
+    spinlock.Unlock();
     return -ENOMEM;
+  }
+  spinlock.Unlock();
   if (count <= inline_segment_num)
   {
     segs = t->io_request.inline_segs;
@@ -353,6 +384,7 @@ int SharedDriverQueueData::alloc_buf_from_pool(Task *t, bool write)
     t->io_request.extra_segs = new void *[count];
     segs = t->io_request.extra_segs;
   }
+  spinlock.Lock();
   for (uint16_t i = 0; i < count; i++)
   {
     ceph_assert(!data_buf_list.empty());
@@ -360,6 +392,7 @@ int SharedDriverQueueData::alloc_buf_from_pool(Task *t, bool write)
     ceph_assert(segs[i] != nullptr);
     data_buf_list.pop_front();
   }
+  spinlock.Unlock();
   t->io_request.nseg = count;
   t->ctx->total_nseg += count;
   if (write)
@@ -384,107 +417,114 @@ void SharedDriverQueueData::_aio_handle(Task *t, IOContext *ioc)
 
   int r = 0;
   uint64_t lba_off, lba_count;
-  uint32_t max_io_completion = (uint32_t)g_conf().get_val<uint64_t>("bluestore_spdk_max_io_completion");
-  uint64_t io_sleep_in_us = g_conf().get_val<uint64_t>("bluestore_spdk_io_sleep");
+// uint32_t max_io_completion = (uint32_t)g_conf().get_val<uint64_t>("bluestore_spdk_max_io_completion");
+// uint64_t io_sleep_in_us = g_conf().get_val<uint64_t>("bluestore_spdk_io_sleep");
 
-  while (ioc->num_running)
+// while (ioc->num_running)
+// {
+again:
+  dout(40) << __func__ << " polling" << dendl;
+  if (current_queue_depth)
   {
-  again:
-    dout(40) << __func__ << " polling" << dendl;
-    if (current_queue_depth)
+    // r = spdk_nvme_qpair_process_completions(qpair, max_io_completion);
+    // r = spdk_plus_nvme_process_completions(qpair, max_io_completion);
+    // if (r < 0)
+    // {
+    //   ceph_abort();
+    // }
+    // else if (r == 0)
+    // {
+    //   usleep(io_sleep_in_us);
+    // }
+  }
+
+  for (; t; t = t->next)
+  {
+    if (current_queue_depth == max_queue_depth)
     {
-      // r = spdk_nvme_qpair_process_completions(qpair, max_io_completion);
-      r = spdk_plus_nvme_process_completions(qpair, max_io_completion);
-      if (r < 0)
-      {
-        ceph_abort();
-      }
-      else if (r == 0)
-      {
-        usleep(io_sleep_in_us);
-      }
+      // no slots
+      goto again;
     }
 
-    for (; t; t = t->next)
+    t->queue = this;
+    lba_off = t->offset / block_size;
+    lba_count = t->len / block_size;
+    switch (t->command)
     {
-      if (current_queue_depth == max_queue_depth)
+    case IOCommand::WRITE_COMMAND:
+    {
+      dout(20) << __func__ << " write command issued " << lba_off << "~" << lba_count << dendl;
+      r = alloc_buf_from_pool(t, true);
+      if (r < 0)
       {
-        // no slots
         goto again;
       }
 
-      t->queue = this;
-      lba_off = t->offset / block_size;
-      lba_count = t->len / block_size;
-      switch (t->command)
+      // r = spdk_nvme_ns_cmd_writev(
+      //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
+      //     data_buf_reset_sgl, data_buf_next_sge);
+      // r = spdk_plus_nvme_ns_cmd_writev(
+      //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
+      //     data_buf_reset_sgl, data_buf_next_sge);
+      r = qpair->submit_cmd_writev(
+          ns, lba_off, lba_count, io_complete, t, 0,
+          data_buf_reset_sgl, data_buf_next_sge);
+      if (r < 0)
       {
-      case IOCommand::WRITE_COMMAND:
-      {
-        dout(20) << __func__ << " write command issued " << lba_off << "~" << lba_count << dendl;
-        r = alloc_buf_from_pool(t, true);
-        if (r < 0)
-        {
-          goto again;
-        }
-
-        // r = spdk_nvme_ns_cmd_writev(
-        //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
-        //     data_buf_reset_sgl, data_buf_next_sge);
-        r = spdk_plus_nvme_ns_cmd_writev(
-            ns, qpair, lba_off, lba_count, io_complete, t, 0,
-            data_buf_reset_sgl, data_buf_next_sge);
-        if (r < 0)
-        {
-          derr << __func__ << " failed to do write command: " << cpp_strerror(r) << dendl;
-          t->ctx->nvme_task_first = t->ctx->nvme_task_last = nullptr;
-          t->release_segs(this);
-          delete t;
-          ceph_abort();
-        }
-        break;
+        derr << __func__ << " failed to do write command: " << cpp_strerror(r) << dendl;
+        t->ctx->nvme_task_first = t->ctx->nvme_task_last = nullptr;
+        t->release_segs(this);
+        delete t;
+        ceph_abort();
       }
-      case IOCommand::READ_COMMAND:
-      {
-        dout(20) << __func__ << " read command issued " << lba_off << "~" << lba_count << dendl;
-        r = alloc_buf_from_pool(t, false);
-        if (r < 0)
-        {
-          goto again;
-        }
-
-        // r = spdk_nvme_ns_cmd_readv(
-        //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
-        //     data_buf_reset_sgl, data_buf_next_sge);
-        r = spdk_plus_nvme_ns_cmd_readv(
-            ns, qpair, lba_off, lba_count, io_complete, t, 0,
-            data_buf_reset_sgl, data_buf_next_sge);
-        if (r < 0)
-        {
-          derr << __func__ << " failed to read: " << cpp_strerror(r) << dendl;
-          t->release_segs(this);
-          delete t;
-          ceph_abort();
-        }
-        break;
-      }
-      case IOCommand::FLUSH_COMMAND:
-      {
-        dout(20) << __func__ << " flush command issueed " << dendl;
-        // r = spdk_nvme_ns_cmd_flush(ns, qpair, io_complete, t);
-        r = spdk_plus_nvme_ns_cmd_flush(ns, qpair, io_complete, t);
-        if (r < 0)
-        {
-          derr << __func__ << " failed to flush: " << cpp_strerror(r) << dendl;
-          t->release_segs(this);
-          delete t;
-          ceph_abort();
-        }
-        break;
-      }
-      }
-      current_queue_depth++;
+      break;
     }
+    case IOCommand::READ_COMMAND:
+    {
+      dout(20) << __func__ << " read command issued " << lba_off << "~" << lba_count << dendl;
+      r = alloc_buf_from_pool(t, false);
+      if (r < 0)
+      {
+        goto again;
+      }
+
+      // r = spdk_nvme_ns_cmd_readv(
+      //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
+      //     data_buf_reset_sgl, data_buf_next_sge);
+      // r = spdk_plus_nvme_ns_cmd_readv(
+      //     ns, qpair, lba_off, lba_count, io_complete, t, 0,
+      //     data_buf_reset_sgl, data_buf_next_sge);
+      r = qpair->submit_cmd_readv(
+          ns, lba_off, lba_count, io_complete, t, 0,
+          data_buf_reset_sgl, data_buf_next_sge);
+      if (r < 0)
+      {
+        derr << __func__ << " failed to read: " << cpp_strerror(r) << dendl;
+        t->release_segs(this);
+        delete t;
+        ceph_abort();
+      }
+      break;
+    }
+    case IOCommand::FLUSH_COMMAND:
+    {
+      dout(20) << __func__ << " flush command issueed " << dendl;
+      // r = spdk_nvme_ns_cmd_flush(ns, qpair, io_complete, t);
+      // r = spdk_plus_nvme_ns_cmd_flush(ns, qpair, io_complete, t);
+      r = qpair->submit_cmd_flush(ns, io_complete, t);
+      if (r < 0)
+      {
+        derr << __func__ << " failed to flush: " << cpp_strerror(r) << dendl;
+        t->release_segs(this);
+        delete t;
+        ceph_abort();
+      }
+      break;
+    }
+    }
+    current_queue_depth++;
   }
+  // }
 
   dout(20) << __func__ << " end" << dendl;
 }
@@ -654,8 +694,9 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
 
   if (!dpdk_thread.joinable())
   {
+    SPDK_NVME_QPAIR_MANAGER **g_qpair_manager_ptr = &g_qpair_manager;
     dpdk_thread = std::thread(
-        [this, coremask_arg, m_core_arg, mem_size_arg, pci_addr]()
+        [this, coremask_arg, m_core_arg, mem_size_arg, pci_addr, g_qpair_manager_ptr]()
         {
           struct spdk_env_opts opts;
           struct spdk_pci_addr addr = pci_addr;
@@ -671,9 +712,13 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
           opts.pci_allowed = &addr;
           opts.num_pci_addr = 1;
           spdk_env_init(&opts);
-          spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_SUPER_POWER_SAVE, NULL, NULL);
+          spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_SUPER_PERFORMANCE, NULL, NULL);
           spdk_unaffinitize_thread();
 
+          if (*g_qpair_manager_ptr == NULL)
+          {
+            *g_qpair_manager_ptr = new SPDK_NVME_QPAIR_MANAGER(g_conf().get_val<uint64_t>("bluestore_spdk_max_io_completion"));
+          }
           std::unique_lock l(probe_queue_lock);
           while (!stopping)
           {
@@ -697,7 +742,13 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
           }
           for (auto p : probe_queue)
             p->done = true;
+          if (g_qpair_manager)
+          {
+            delete g_qpair_manager;
+            g_qpair_manager = nullptr;
+          }
           probe_queue_cond.notify_all();
+
           spdk_plus_env_fini();
           spdk_env_fini();
         });
@@ -781,7 +832,8 @@ void io_complete(void *t, const struct spdk_nvme_cpl *completion)
       {
         task->return_code = 0;
       }
-      --ctx->num_running;
+      // ctx->num_running.fetch_sub(1, std::memory_order_relaxed);
+      ctx->try_aio_wake();
     }
   }
   else
@@ -1045,6 +1097,7 @@ int NVMEDevice::read(uint64_t off, uint64_t len, bufferlist *pbl,
   make_read_tasks(this, off, &read_ioc, buf, len, &t, off, len);
   dout(5) << __func__ << " " << off << "~" << len << dendl;
   aio_submit(&read_ioc);
+  read_ioc.aio_wait();
 
   pbl->push_back(std::move(p));
   return t.return_code;
@@ -1082,6 +1135,7 @@ int NVMEDevice::read_random(uint64_t off, uint64_t len, char *buf, bool buffered
 
   make_read_tasks(this, aligned_off, &ioc, buf, aligned_len, &t, off, len);
   aio_submit(&ioc);
+  ioc.aio_wait();
 
   return t.return_code;
 }
