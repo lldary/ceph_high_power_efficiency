@@ -42,7 +42,7 @@
 #include "common/perf_counters.h"
 
 #include "NVMEDevice.h"
-
+#include "NVMeLog.h"
 #include "NVMeQPair.h"
 
 #define dout_context g_ceph_context
@@ -557,6 +557,7 @@ public:
   NVMEManager() {}
   ~NVMEManager()
   {
+    debugLog("~NVMEManager destructor\n");
     if (!dpdk_thread.joinable())
       return;
     {
@@ -565,6 +566,7 @@ public:
       probe_queue_cond.notify_all();
     }
     dpdk_thread.join();
+    infoLog("~NVMEManager destructor end\n");
   }
 
   int try_get(const spdk_nvme_transport_id &trid, SharedDriverData **driver);
@@ -742,15 +744,17 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
           }
           for (auto p : probe_queue)
             p->done = true;
-          if (g_qpair_manager)
+          if (*g_qpair_manager_ptr)
           {
-            delete g_qpair_manager;
-            g_qpair_manager = nullptr;
+            delete *g_qpair_manager_ptr;
+            *g_qpair_manager_ptr = nullptr;
+            infoLog("g_qpair_manager is null");
           }
           probe_queue_cond.notify_all();
-
+          debugLog("spdk env thread exiting\n");
           spdk_plus_env_fini();
           spdk_env_fini();
+          debugLog("spdk env thread exited\n");
         });
   }
 

@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <sstream>
 
+#include <iostream>
+
 #include "common/errno.h"
 #include "common/safe_io.h"
 #include "include/ceph_assert.h"
@@ -24,22 +26,26 @@
  * haven't forked) or pass a message to the parent with the error if
  * we have.
  */
-class Preforker {
+class Preforker
+{
   pid_t childpid;
   bool forked;
-  int fd[2];  // parent's, child's
+  int fd[2]; // parent's, child's
 
 public:
   Preforker()
-    : childpid(0),
-      forked(false)
-  {}
+      : childpid(0),
+        forked(false)
+  {
+  }
 
-  int prefork(std::string &err) {
+  int prefork(std::string &err)
+  {
     ceph_assert(!forked);
     std::ostringstream oss;
     int r = socketpair_cloexec(AF_UNIX, SOCK_STREAM, 0, fd);
-    if (r < 0) {
+    if (r < 0)
+    {
       int e = errno;
       oss << "[" << getpid() << "]: unable to create socketpair: " << cpp_strerror(e);
       err = oss.str();
@@ -50,7 +56,8 @@ public:
     sa.sa_handler = SIG_IGN;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    if (sigaction(SIGHUP, &sa, nullptr) != 0) {
+    if (sigaction(SIGHUP, &sa, nullptr) != 0)
+    {
       int e = errno;
       oss << "[" << getpid() << "]: unable to ignore SIGHUP: " << cpp_strerror(e);
       err = oss.str();
@@ -60,85 +67,114 @@ public:
     forked = true;
 
     childpid = fork();
-    if (childpid < 0) {
+    if (childpid < 0)
+    {
       int e = errno;
       oss << "[" << getpid() << "]: unable to fork: " << cpp_strerror(e);
       err = oss.str();
       return (errno = e, -1);
     }
-    if (is_child()) {
+    if (is_child())
+    {
       ::close(fd[0]);
-    } else {
+    }
+    else
+    {
       ::close(fd[1]);
     }
     return 0;
   }
 
-  int get_signal_fd() const {
+  int get_signal_fd() const
+  {
     return forked ? fd[1] : 0;
   }
 
-  bool is_child() {
+  bool is_child()
+  {
     return childpid == 0;
   }
 
-  bool is_parent() {
+  bool is_parent()
+  {
     return childpid != 0;
   }
 
-  int parent_wait(std::string &err_msg) {
+  int parent_wait(std::string &err_msg)
+  {
     ceph_assert(forked);
 
     int r = -1;
     std::ostringstream oss;
     int err = safe_read_exact(fd[0], &r, sizeof(r));
-    if (err == 0 && r == -1) {
+    if (err == 0 && r == -1)
+    {
+      std::cerr << __FUNCTION__ << ":" << __LINE__ << " read error: " << cpp_strerror(r) << std::endl;
       // daemonize
       ::close(0);
       ::close(1);
       ::close(2);
-    } else if (err) {
+    }
+    else if (err)
+    {
+      std::cerr << __FUNCTION__ << ":" << __LINE__ << " read error: " << cpp_strerror(r) << std::endl;
       oss << "[" << getpid() << "]: " << cpp_strerror(err);
-    } else {
+    }
+    else
+    {
       // wait for child to exit
+      std::cerr << __FUNCTION__ << ":" << __LINE__ << " pid: " << getpid() << "err: " << err << " read error: " << cpp_strerror(r) << std::endl;
       int status;
       err = waitpid(childpid, &status, 0);
-      if (err < 0) {
+      std::cerr << __FUNCTION__ << ":" << __LINE__ << " waitpid error: " << cpp_strerror(err) << std::endl;
+      if (err < 0)
+      {
         oss << "[" << getpid() << "]" << " waitpid error: " << cpp_strerror(err);
-      } else if (WIFSIGNALED(status)) {
+      }
+      else if (WIFSIGNALED(status))
+      {
         oss << "[" << getpid() << "]" << " exited with a signal";
-      } else if (!WIFEXITED(status)) {
+      }
+      else if (!WIFEXITED(status))
+      {
         oss << "[" << getpid() << "]" << " did not exit normally";
-      } else {
+      }
+      else
+      {
         err = WEXITSTATUS(status);
         if (err != 0)
-         oss << "[" << getpid() << "]" << " returned exit_status " << cpp_strerror(err);
+          oss << "[" << getpid() << "]" << " returned exit_status " << cpp_strerror(err);
       }
     }
     err_msg = oss.str();
+    std::cerr << __FUNCTION__ << ":" << __LINE__ << " err_msg: " << err_msg << std::endl;
     return err;
   }
 
-  int signal_exit(int r) {
-    if (forked) {
+  int signal_exit(int r)
+  {
+    if (forked)
+    {
       /* If we get an error here, it's too late to do anything reasonable about it. */
       [[maybe_unused]] auto n = safe_write(fd[1], &r, sizeof(r));
     }
     return r;
   }
-  void exit(int r) {
+  void exit(int r)
+  {
     if (is_child())
-        signal_exit(r);
+      signal_exit(r);
+    std::cerr << __FUNCTION__ << ":" << __LINE__ << " pid: " << getpid() << " exit: " << r << std::endl;
     ::exit(r);
   }
 
-  void daemonize() {
+  void daemonize()
+  {
     ceph_assert(forked);
     static int r = -1;
     int r2 = ::write(fd[1], &r, sizeof(r));
-    r += r2;  // make the compiler shut up about the unused return code from ::write(2).
+    r += r2; // make the compiler shut up about the unused return code from ::write(2).
   }
-  
 };
 
 #endif

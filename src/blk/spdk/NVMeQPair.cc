@@ -19,7 +19,7 @@ void SpinLock::Unlock()
     flag_.store(false, std::memory_order_release);
 }
 
-SPDK_NVME_SQ::SPDK_NVME_SQ(uint16_t length, std::condition_variable *cv) : length(length), head(0), tail(0), cv(cv)
+SPDK_NVME_SQ::SPDK_NVME_SQ(uint16_t length, std::condition_variable *cv) : length(length), head(0), tail(0), curr_depth(0), cv(cv)
 {
     length++;
     sq = new SPDK_NVME_QPAIR_SQL[length];
@@ -97,11 +97,17 @@ SPDK_NVME_QPAIR::SPDK_NVME_QPAIR(uint16_t max_depth, spdk_nvme_req_reset_sgl_cb 
 
 SPDK_NVME_QPAIR::~SPDK_NVME_QPAIR()
 {
+    debugLog("~SPDK_NVME_QPAIR destructor\n");
     exit_flag = true;
     if (qpair_thread.joinable())
     {
         qpair_thread.join();
     }
+    else
+    {
+        errorLog("qpair_thread not joinable\n");
+    }
+    debugLog("~SPDK_NVME_QPAIR destructor end\n");
 }
 
 void SPDK_NVME_QPAIR::start_thread(NVMEDevice *bdev, struct spdk_nvme_ctrlr *t_ctrlr, struct spdk_nvme_ns *t_ns, uint32_t t_block_size)
@@ -155,7 +161,12 @@ void SPDK_NVME_QPAIR::start_thread(NVMEDevice *bdev, struct spdk_nvme_ctrlr *t_c
                         cv.wait_for(lock, std::chrono::milliseconds(100));
                     }
                 }
-            } });
+            }
+
+            spdk_plus_nvme_ctrlr_free_io_qpair(this->qpair);
+            this->qpair = NULL;
+            
+            infoLog("Thread exiting"); });
 
     {
         std::unique_lock<std::mutex> lock(mutex);
@@ -327,10 +338,13 @@ void SPDK_NVME_QPAIR::free_io_pair(SPDK_NVME_SQ *sq)
 SPDK_NVME_QPAIR_MANAGER::SPDK_NVME_QPAIR_MANAGER(uint16_t max_depth) : max_depth(max_depth) {}
 SPDK_NVME_QPAIR_MANAGER::~SPDK_NVME_QPAIR_MANAGER()
 {
+    debugLog("~SPDK_NVME_QPAIR_MANAGER destructor\n");
     for (auto qpair : qpair_list)
     {
         delete qpair;
+        qpair = nullptr;
     }
+    debugLog("~SPDK_NVME_QPAIR_MANAGER destructor end\n");
 }
 
 SPDK_NVME_SQ *SPDK_NVME_QPAIR_MANAGER::create_qpair(NVMEDevice *bdev, struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_ns *ns, uint32_t block_size, spdk_nvme_req_reset_sgl_cb data_buf_reset_sgl, spdk_nvme_req_next_sge_cb data_buf_next_sge, spdk_nvme_cmd_cb io_complete)
