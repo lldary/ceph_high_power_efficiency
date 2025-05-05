@@ -2,6 +2,8 @@
 #include "NVMeLog.h"
 
 #include <vector>
+#include <immintrin.h>
+#include <time.h>
 
 SpinLock::SpinLock() : flag_(false) {}
 
@@ -11,6 +13,8 @@ void SpinLock::Lock()
     while (!flag_.compare_exchange_strong(expected, true, std::memory_order_acquire))
     {
         expected = false; // 重置预期值
+        _umonitor(&flag_);
+        _umwait(0, _rdtsc() + 2000);
     }
 }
 
@@ -37,6 +41,7 @@ int SPDK_NVME_SQ::submit_cmd_readv(struct spdk_nvme_ns *ns,
     {
         return -1; // 队列已满
     }
+    // debugLog("submit_cmd_readv\n");
     curr_depth.fetch_add(1);
     sql->cmd = IOCommand::READ_COMMAND;
     sql->ns = ns;
@@ -62,6 +67,7 @@ int SPDK_NVME_SQ::submit_cmd_writev(struct spdk_nvme_ns *ns,
     {
         return -1; // 队列已满
     }
+    // debugLog("submit_cmd_writev\n");
     curr_depth.fetch_add(1);
     sql->cmd = IOCommand::WRITE_COMMAND;
     sql->ns = ns;
@@ -84,6 +90,7 @@ int SPDK_NVME_SQ::submit_cmd_flush(struct spdk_nvme_ns *ns,
     {
         return -1; // 队列已满
     }
+    // debugLog("submit_cmd_flush\n");
     curr_depth.fetch_add(1);
     sql->cmd = IOCommand::FLUSH_COMMAND;
     sql->ns = ns;
@@ -95,6 +102,18 @@ int SPDK_NVME_SQ::submit_cmd_flush(struct spdk_nvme_ns *ns,
     return 0;
 }
 
+void SPDK_NVME_SQ::submit_all()
+{
+    struct timespec ts;
+
+    ts.tv_sec = 0;     // 秒
+    ts.tv_nsec = 1000; // 纳秒 (1 微秒 = 1000 纳秒)
+
+    // 调用 clock_nanosleep
+    clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
+    cv->notify_one();
+}
+
 SPDK_NVME_QPAIR::SPDK_NVME_QPAIR(uint16_t max_depth, spdk_nvme_req_reset_sgl_cb data_buf_reset_sgl, spdk_nvme_req_next_sge_cb data_buf_next_sge, spdk_nvme_cmd_cb io_complete) : max_queue_depth(max_depth), exit_flag(false), current_queue_depth(0),
                                                                                                                                                                                  data_buf_reset_sgl(data_buf_reset_sgl), data_buf_next_sge(data_buf_next_sge), io_complete(io_complete), ctrlr(NULL), ns(NULL) {}
 
@@ -102,6 +121,7 @@ SPDK_NVME_QPAIR::~SPDK_NVME_QPAIR()
 {
     debugLog("~SPDK_NVME_QPAIR destructor\n");
     exit_flag = true;
+    cv.notify_one();
     if (qpair_thread.joinable())
     {
         qpair_thread.join();
@@ -137,7 +157,8 @@ void SPDK_NVME_QPAIR::start_thread(NVMEDevice *bdev, struct spdk_nvme_ctrlr *t_c
             this->qpair = spdk_plus_nvme_ctrlr_alloc_io_device(ctrlr, &opts, sizeof(opts), &rc);
             if (this->qpair == NULL)
             {
-            // derr << __func__ << " failed to create io qpair rc = " << rc << dendl;
+                // derr << __func__ << " failed to create io qpair rc = " << rc << dendl;
+                errorLog("failed to create io qpair rc = %d", rc);
             }
             ceph_assert(this->qpair != NULL);
 
@@ -148,11 +169,14 @@ void SPDK_NVME_QPAIR::start_thread(NVMEDevice *bdev, struct spdk_nvme_ctrlr *t_c
                 cv.notify_all();
             }
 
+            infoLog("Thread started\n");
+
             // 轮询队列完成
             while(!exit_flag) {
                 if(current_queue_depth > 0) {
                     int r = spdk_plus_nvme_process_completions(this->qpair, max_io_completion);
                     if (r < 0){
+                        errorLog("failed to process completions: %d\n", r);
                         ceph_abort();
                     } else if (r > 0){
                         current_queue_depth -= r;
@@ -161,7 +185,10 @@ void SPDK_NVME_QPAIR::start_thread(NVMEDevice *bdev, struct spdk_nvme_ctrlr *t_c
                 } else {
                     if(submit_io() == false) {
                         std::unique_lock<std::mutex> lock(mutex);
-                        cv.wait_for(lock, std::chrono::milliseconds(100));
+                        // debugLog("Thread waiting for IO\n");
+                        cv.wait_for(lock, std::chrono::microseconds(100));
+                        submit_io();
+                        // debugLog("Thread woke up\n");
                     }
                 }
             }
@@ -239,7 +266,7 @@ bool SPDK_NVME_QPAIR::submit_io_internel(SPDK_NVME_SQ *sq)
         memset(sql, 0, sizeof(SPDK_NVME_QPAIR_SQL));
         sq->curr_depth.fetch_sub(1);
         sq->sq_cv.notify_one(); // 通知等待的线程
-        current_queue_depth++;
+        current_queue_depth += 1;
         return true;
     }
     else

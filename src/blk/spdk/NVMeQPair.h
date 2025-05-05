@@ -59,6 +59,8 @@ struct SPDK_NVME_SQ
 
     int submit_cmd_flush(struct spdk_nvme_ns *ns,
                          spdk_nvme_cmd_cb cb_fn, void *cb_arg);
+
+    void submit_all();
 };
 
 class SPDK_NVME_QPAIR

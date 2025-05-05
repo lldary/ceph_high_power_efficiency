@@ -528,6 +528,7 @@ again:
     current_queue_depth++;
   }
   // }
+  qpair->submit_all();
 
   dout(20) << __func__ << " end" << dendl;
 }
@@ -793,7 +794,8 @@ void io_complete(void *t, const struct spdk_nvme_cpl *completion)
     // destroy this ioc).
     if (ctx->priv)
     {
-      if (!--ctx->num_running)
+      ctx->num_running.fetch_sub(1);
+      if (!ctx->num_running.load())
       {
         task->device->aio_callback(task->device->aio_callback_priv, ctx->priv);
       }
@@ -816,7 +818,8 @@ void io_complete(void *t, const struct spdk_nvme_cpl *completion)
     {
       if (ctx->priv)
       {
-        if (!--ctx->num_running)
+        ctx->num_running.fetch_sub(1);
+        if (!ctx->num_running.load())
         {
           task->device->aio_callback(task->device->aio_callback_priv, ctx->priv);
         }
@@ -958,7 +961,9 @@ void NVMEDevice::aio_submit(IOContext *ioc)
   Task *t = static_cast<Task *>(ioc->nvme_task_first);
   if (pending && t)
   {
-    ioc->num_running += pending;
+    // ioc->num_running += pending;
+    ioc->num_running.fetch_add(pending);
+    // ioc->num_pending.fetch_sub(pending);
     ioc->num_pending -= pending;
     ceph_assert(ioc->num_pending.load() == 0); // we should be only thread doing this
     // Only need to push the first entry
@@ -981,6 +986,7 @@ static void ioc_append_task(IOContext *ioc, Task *t)
     ioc->nvme_task_first = t;
   ioc->nvme_task_last = t;
   ++ioc->num_pending;
+  // ioc->num_pending.fetch_add(1);
 }
 
 static void write_split(
