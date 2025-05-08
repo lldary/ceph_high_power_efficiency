@@ -268,6 +268,7 @@ struct Task
 
 static void data_buf_reset_sgl(void *cb_arg, uint32_t sgl_offset)
 {
+  cb_arg = spdk_plus_get_cb_arg(cb_arg);
   Task *t = static_cast<Task *>(cb_arg);
   uint32_t i = sgl_offset / data_buffer_size;
   uint32_t offset = i * data_buffer_size;
@@ -291,6 +292,7 @@ static void data_buf_reset_sgl(void *cb_arg, uint32_t sgl_offset)
 
 static int data_buf_next_sge(void *cb_arg, void **address, uint32_t *length)
 {
+  cb_arg = spdk_plus_get_cb_arg(cb_arg);
   uint32_t size;
   void *addr;
   Task *t = static_cast<Task *>(cb_arg);
@@ -662,6 +664,7 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
           opts.pci_allowed = &addr;
           opts.num_pci_addr = 1;
           spdk_env_init(&opts);
+          spdk_plus_env_init(SPDK_PLUS_SMART_SCHEDULE_MODULE_PERFORMANCE, nullptr, nullptr);
           spdk_unaffinitize_thread();
 
           std::unique_lock l(probe_queue_lock);
@@ -688,6 +691,9 @@ int NVMEManager::try_get(const spdk_nvme_transport_id &trid, SharedDriverData **
           for (auto p : probe_queue)
             p->done = true;
           probe_queue_cond.notify_all();
+
+          spdk_plus_env_fini();
+          spdk_env_fini();
         });
   }
 
@@ -714,6 +720,16 @@ void io_complete(void *t, const struct spdk_nvme_cpl *completion)
   ceph_assert(queue != NULL);
   ceph_assert(ctx != NULL);
   --queue->current_queue_depth;
+  if (spdk_nvme_cpl_is_error(completion))
+  {
+    std::cout << __func__ << " completed, left " << queue->current_queue_depth
+              << ", completed " << queue->completed_op_seq << " status " << completion->status.sc << std::endl;
+    std::unordered_map<IOCommand, std::string> commandMap = {
+        {IOCommand::READ_COMMAND, "READ_COMMAND"},
+        {IOCommand::WRITE_COMMAND, "WRITE_COMMAND"},
+        {IOCommand::FLUSH_COMMAND, "FLUSH_COMMAND"}};
+    std::cout << "command: " << commandMap[task->command] << std::endl;
+  }
   if (task->command == IOCommand::WRITE_COMMAND)
   {
     ceph_assert(!spdk_nvme_cpl_is_error(completion));
